@@ -7,9 +7,24 @@
 
     <!-- Logo -->
     <router-link to="/" class="sidebar-logo">
-      <img src="@/assets/images/logo.png" alt="Logo" class="light-logo" />
-      <img src="@/assets/images/logo-light.png" alt="Logo" class="dark-logo" />
-      <img src="@/assets/images/logo-icon.png" alt="Logo" class="logo-icon" />
+      <img
+        src="@/assets/images/logos/logo2.png"
+        alt="AI Parking"
+        class="light-logo"
+        style="width: 168px; height: 40px; object-fit: contain"
+      />
+      <img
+        src="@/assets/images/logos/logo2.png"
+        alt="AI Parking"
+        class="dark-logo"
+        style="width: 168px; height: 40px; object-fit: contain"
+      />
+      <img
+        src="@/assets/images/logos/logo2.png"
+        alt="AI Parking"
+        class="logo-icon"
+        style="width: 40px; height: 40px; object-fit: contain"
+      />
     </router-link>
 
     <!-- Menu -->

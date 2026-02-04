@@ -6,9 +6,10 @@
       >
         <div class="text-center">
           <img
-            src="@/assets/images/auth/auth-img.png"
-            alt="Parking"
+            src="@/assets/images/logos/logo1.png"
+            alt="AI Parking Logo"
             class="auth-img"
+            style="max-width: 300px"
           />
         </div>
       </div>
@@ -100,18 +101,6 @@
             ></span>
             {{ isLoading ? "Нэвтэрж байна..." : "Нэвтрэх" }}
           </button>
-
-          <div class="mt-24 text-center">
-            <div class="bg-neutral-100 p-16 radius-8">
-              <p class="text-secondary-light text-sm mb-8">
-                Туршилтын нэвтрэх мэдээлэл:
-              </p>
-              <p class="mb-0 text-sm">
-                <strong>Нэвтрэх нэр:</strong> admin<br />
-                <strong>Нууц үг:</strong> admin123
-              </p>
-            </div>
-          </div>
         </form>
       </div>
     </div>
