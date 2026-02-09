@@ -137,6 +137,20 @@
           </router-link>
         </li>
 
+        <!-- QR Management -->
+        <li class="sidebar-menu-group-title">QR удирдлага</li>
+
+        <li>
+          <router-link
+            to="/qr-management"
+            @click="() => goToRoute('/qr-management')"
+            :class="{ 'active-page': isActive('/qr-management') }"
+          >
+            <iconify-icon icon="mdi:qrcode" class="menu-icon"></iconify-icon>
+            <span>QR код удирдлага</span>
+          </router-link>
+        </li>
+
         <!-- Settings Section -->
         <li class="sidebar-menu-group-title">Систем</li>
 

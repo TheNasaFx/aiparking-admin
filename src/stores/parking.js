@@ -1,224 +1,489 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
+import { useAuthStore } from "./auth";
 
+const API_BASE_URL = "https://aiparking.mindsymbol.com";
+
+// Status mapping from API to UI
 export const PARKING_STATUS = {
-  FREE: "FREE",
-  RESERVED: "RESERVED",
-  OCCUPIED: "OCCUPIED",
-  INACTIVE: "INACTIVE",
+  FREE: "FREE", // lock_state: raised, status: online
+  OCCUPIED: "OCCUPIED", // lock_state: lowered, status: online
+  OFFLINE: "OFFLINE", // status: offline
 };
 
-const BASE_LAT = 47.918082;
-const BASE_LNG = 106.930982;
+// Coordinate cache in localStorage (fallback when list API omits coords)
+const COORD_CACHE_KEY = "device_coordinates_cache";
 
-function getOffset(index) {
-  const offsets = [
-    { lat: 0, lng: 0 },
-    { lat: 0.0005, lng: 0.0008 },
-    { lat: -0.0004, lng: 0.0006 },
-    { lat: 0.0007, lng: -0.0003 },
-    { lat: -0.0006, lng: -0.0007 },
-    { lat: 0.0003, lng: 0.001 },
-    { lat: -0.0008, lng: 0.0002 },
-    { lat: 0.0009, lng: 0.0005 },
-  ];
-  return offsets[index % offsets.length];
+function getCachedCoordinates() {
+  try {
+    const stored = localStorage.getItem(COORD_CACHE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
 }
 
-function generateMockParkingData() {
-  const statuses = [
-    PARKING_STATUS.FREE,
-    PARKING_STATUS.RESERVED,
-    PARKING_STATUS.OCCUPIED,
-    PARKING_STATUS.FREE,
-    PARKING_STATUS.OCCUPIED,
-    PARKING_STATUS.FREE,
-    PARKING_STATUS.RESERVED,
-    PARKING_STATUS.INACTIVE,
-  ];
-
-  const locations = [
-    "A-1 Зүүн",
-    "A-2 Баруун",
-    "B-1 Урд",
-    "B-2 Хойд",
-    "C-1 Төв",
-    "C-2 Гадна",
-    "D-1 Дотор",
-    "D-2 Нэмэлт",
-  ];
-
-  return Array.from({ length: 8 }, (_, i) => {
-    const offset = getOffset(i);
-    const now = new Date();
-    const lastUpdated = new Date(now.getTime() - Math.random() * 3600000);
-
-    return {
-      id: `PKG-${String(i + 1).padStart(3, "0")}`,
-      status: statuses[i],
-      location: locations[i],
-      coordinates: {
-        lat: BASE_LAT + offset.lat,
-        lng: BASE_LNG + offset.lng,
-      },
-      lastUpdated: lastUpdated.toISOString(),
-      createdAt: "2024-01-15T08:00:00Z",
-      deviceId: `DEV-${1000 + i}`,
-      zone: String.fromCharCode(65 + Math.floor(i / 2)),
-    };
-  });
+function cacheCoordinates(deviceId, lat, lng) {
+  const cache = getCachedCoordinates();
+  cache[deviceId] = { lat, lng };
+  localStorage.setItem(COORD_CACHE_KEY, JSON.stringify(cache));
 }
 
-function generateStatusHistory(parkingId) {
-  const statuses = [
-    PARKING_STATUS.FREE,
-    PARKING_STATUS.RESERVED,
-    PARKING_STATUS.OCCUPIED,
-    PARKING_STATUS.FREE,
-  ];
+// Map API device to parking spot format
+function mapDeviceToParking(device) {
+  // Try API coordinates first, fall back to localStorage cache
+  let lat = device.location_lat ? parseFloat(device.location_lat) : null;
+  let lng = device.location_lng ? parseFloat(device.location_lng) : null;
 
-  const now = new Date();
-
-  return Array.from({ length: 10 }, (_, i) => {
-    const timestamp = new Date(now.getTime() - (i + 1) * 1800000);
-    return {
-      id: `${parkingId}-H${i + 1}`,
-      status: statuses[i % statuses.length],
-      timestamp: timestamp.toISOString(),
-      duration: Math.floor(Math.random() * 120) + 10,
-    };
-  });
-}
-
-export const useParkingStore = defineStore("parking", () => {
-  const parkingSpots = ref([]);
-  const selectedParking = ref(null);
-  const isLoading = ref(false);
-  const error = ref(null);
-
-  const totalSpots = computed(() => parkingSpots.value.length);
-  const freeSpots = computed(
-    () =>
-      parkingSpots.value.filter((p) => p.status === PARKING_STATUS.FREE).length,
-  );
-  const reservedSpots = computed(
-    () =>
-      parkingSpots.value.filter((p) => p.status === PARKING_STATUS.RESERVED)
-        .length,
-  );
-  const occupiedSpots = computed(
-    () =>
-      parkingSpots.value.filter((p) => p.status === PARKING_STATUS.OCCUPIED)
-        .length,
-  );
-  const inactiveSpots = computed(
-    () =>
-      parkingSpots.value.filter((p) => p.status === PARKING_STATUS.INACTIVE)
-        .length,
-  );
-  const activeSpots = computed(() => totalSpots.value - inactiveSpots.value);
-
-  const statistics = computed(() => ({
-    total: totalSpots.value,
-    free: freeSpots.value,
-    reserved: reservedSpots.value,
-    occupied: occupiedSpots.value,
-    inactive: inactiveSpots.value,
-    active: activeSpots.value,
-  }));
-
-  async function fetchParkingSpots() {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      parkingSpots.value = generateMockParkingData();
-    } catch (e) {
-      error.value = e.message;
-    } finally {
-      isLoading.value = false;
+  if (!lat || !lng) {
+    const cached = getCachedCoordinates();
+    const c = cached[device.device_id];
+    if (c) {
+      lat = c.lat;
+      lng = c.lng;
     }
+  } else {
+    // API returned coords — update cache
+    cacheCoordinates(device.device_id, lat, lng);
   }
 
-  async function fetchParkingById(id) {
-    isLoading.value = true;
-    error.value = null;
+  const coordinates = lat && lng ? { lat, lng } : null;
 
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      const parking = parkingSpots.value.find((p) => p.id === id);
-
-      if (parking) {
-        selectedParking.value = {
-          ...parking,
-          statusHistory: generateStatusHistory(parking.id),
-        };
-      } else {
-        throw new Error("Parking not found");
-      }
-    } catch (e) {
-      error.value = e.message;
-      selectedParking.value = null;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  function updateParkingStatus(id, newStatus) {
-    const index = parkingSpots.value.findIndex((p) => p.id === id);
-    if (index !== -1) {
-      parkingSpots.value[index] = {
-        ...parkingSpots.value[index],
-        status: newStatus,
-        lastUpdated: new Date().toISOString(),
-      };
-    }
-  }
-
-  function clearSelectedParking() {
-    selectedParking.value = null;
-  }
-
-  function simulateRealTimeUpdates() {
-    setInterval(() => {
-      if (parkingSpots.value.length > 0) {
-        const randomIndex = Math.floor(
-          Math.random() * parkingSpots.value.length,
-        );
-        const statuses = [
-          PARKING_STATUS.FREE,
-          PARKING_STATUS.RESERVED,
-          PARKING_STATUS.OCCUPIED,
-        ];
-        const randomStatus =
-          statuses[Math.floor(Math.random() * statuses.length)];
-
-        if (
-          parkingSpots.value[randomIndex].status !== PARKING_STATUS.INACTIVE
-        ) {
-          updateParkingStatus(parkingSpots.value[randomIndex].id, randomStatus);
-        }
-      }
-    }, 10000);
+  // Determine status based on lock_state and online status
+  let status = PARKING_STATUS.OFFLINE;
+  if (device.status === "online") {
+    status =
+      device.lock_state === "raised"
+        ? PARKING_STATUS.FREE
+        : PARKING_STATUS.OCCUPIED;
   }
 
   return {
+    id: device.id,
+    deviceId: device.device_id,
+    name: device.name || device.device_id,
+    address: device.address || "",
+    status: status,
+    lockState: device.lock_state,
+    isOnline: device.status === "online",
+    isPaid: device.is_paid || false,
+    timer: device.timer || 0,
+    coordinates: coordinates,
+    hasCoordinates: !!coordinates,
+    location: coordinates ? "Бүртгэгдсэн" : "Бүртгэгдээгүй",
+    lastUpdated: new Date().toISOString(),
+  };
+}
+
+export const useParkingStore = defineStore("parking", () => {
+  const authStore = useAuthStore();
+
+  const devices = ref([]);
+  const dashboardStats = ref(null);
+  const selectedDevice = ref(null);
+  const isLoading = ref(false);
+  const error = ref(null);
+
+  // Computed statistics
+  const totalDevices = computed(() => devices.value.length);
+  const onlineDevices = computed(
+    () => devices.value.filter((d) => d.isOnline).length,
+  );
+  const offlineDevices = computed(
+    () => devices.value.filter((d) => !d.isOnline).length,
+  );
+  const freeSpots = computed(
+    () => devices.value.filter((d) => d.status === PARKING_STATUS.FREE).length,
+  );
+  const occupiedSpots = computed(
+    () =>
+      devices.value.filter((d) => d.status === PARKING_STATUS.OCCUPIED).length,
+  );
+  const devicesWithCoordinates = computed(() =>
+    devices.value.filter((d) => d.hasCoordinates),
+  );
+
+  const statistics = computed(() => ({
+    total: totalDevices.value,
+    online: onlineDevices.value,
+    offline: offlineDevices.value,
+    free: freeSpots.value,
+    occupied: occupiedSpots.value,
+    ...(dashboardStats.value || {}),
+  }));
+
+  // Fetch all devices from API
+  async function fetchDevices() {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/devices`, {
+        method: "GET",
+        headers: {
+          ...authStore.getAuthHeader(),
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.devices) {
+        const rawDevices = data.data.devices;
+        devices.value = rawDevices.map(mapDeviceToParking);
+
+        // For devices without coords in cache, fetch individually to get coordinates
+        const devicesNeedingCoords = devices.value.filter(
+          (d) => !d.hasCoordinates,
+        );
+        if (devicesNeedingCoords.length > 0) {
+          await Promise.allSettled(
+            devicesNeedingCoords.map(async (device) => {
+              try {
+                const detailRes = await fetch(
+                  `${API_BASE_URL}/admin/devices/${device.id}`,
+                  { headers: { ...authStore.getAuthHeader() } },
+                );
+                const detailData = await detailRes.json();
+                if (detailData.success && detailData.data) {
+                  const d = detailData.data;
+                  const lat = d.location_lat
+                    ? parseFloat(d.location_lat)
+                    : null;
+                  const lng = d.location_lng
+                    ? parseFloat(d.location_lng)
+                    : null;
+                  if (lat && lng && d.device_id) {
+                    cacheCoordinates(d.device_id, lat, lng);
+                  }
+                }
+              } catch (_) {}
+            }),
+          );
+          // Re-map devices with updated cache
+          devices.value = rawDevices.map(mapDeviceToParking);
+        }
+      } else {
+        throw new Error(data.message || "Failed to fetch devices");
+      }
+    } catch (e) {
+      console.error("Fetch devices error:", e);
+      error.value = e.message;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Fetch dashboard statistics
+  async function fetchDashboardStats() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
+        method: "GET",
+        headers: {
+          ...authStore.getAuthHeader(),
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        dashboardStats.value = {
+          availableSpots: data.data.available_spots,
+          occupiedSpots: data.data.occupied_spots,
+          totalDevices: data.data.total_devices,
+          onlineDevices: data.data.online_devices,
+          offlineDevices: data.data.offline_devices,
+          devicesWithErrors: data.data.devices_with_errors,
+        };
+      }
+    } catch (e) {
+      console.error("Fetch dashboard stats error:", e);
+    }
+  }
+
+  // Fetch single device by ID
+  async function fetchDeviceById(deviceId) {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}`,
+        {
+          method: "GET",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        selectedDevice.value = mapDeviceToParking(data.data);
+        // Status history is not available from API, set empty array
+        selectedDevice.value.statusHistory = [];
+      } else {
+        throw new Error(data.message || "Device not found");
+      }
+    } catch (e) {
+      console.error("Fetch device error:", e);
+      error.value = e.message;
+      selectedDevice.value = null;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Save coordinates for a device via API
+  async function saveDeviceCoordinates(deviceNumericId, lat, lng) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceNumericId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...authStore.getAuthHeader(),
+          },
+          body: JSON.stringify({
+            location_lat: lat,
+            location_lng: lng,
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.message || "Координат хадгалах амжилтгүй");
+      }
+
+      // Cache coordinates locally (list API doesn't return coords)
+      const deviceId = data.data?.device_id;
+      if (deviceId) {
+        cacheCoordinates(deviceId, lat, lng);
+      }
+
+      // Update local state directly instead of re-fetching
+      const coordinates = { lat, lng };
+      const index = devices.value.findIndex((d) => d.id === deviceNumericId);
+      if (index !== -1) {
+        devices.value[index] = {
+          ...devices.value[index],
+          coordinates: coordinates,
+          hasCoordinates: true,
+          location: "Бүртгэгдсэн",
+        };
+      }
+      if (selectedDevice.value && selectedDevice.value.id === deviceNumericId) {
+        selectedDevice.value = {
+          ...selectedDevice.value,
+          coordinates: coordinates,
+          hasCoordinates: true,
+          location: "Бүртгэгдсэн",
+        };
+      }
+
+      return true;
+    } catch (e) {
+      console.error("Save coordinates error:", e);
+      error.value = e.message;
+      return false;
+    }
+  }
+
+  // Control device - Raise lock
+  async function raiseLock(deviceId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}/raise`,
+        {
+          method: "POST",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        // Refresh devices after command
+        await fetchDevices();
+        return true;
+      }
+      throw new Error(data.message || "Failed to raise lock");
+    } catch (e) {
+      console.error("Raise lock error:", e);
+      error.value = e.message;
+      return false;
+    }
+  }
+
+  // Control device - Lower lock
+  async function lowerLock(deviceId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}/lower`,
+        {
+          method: "POST",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchDevices();
+        return true;
+      }
+      throw new Error(data.message || "Failed to lower lock");
+    } catch (e) {
+      console.error("Lower lock error:", e);
+      error.value = e.message;
+      return false;
+    }
+  }
+
+  // Query device status
+  async function queryDeviceStatus(deviceId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}/query`,
+        {
+          method: "POST",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (data.success) {
+        await fetchDevices();
+        return data.data;
+      }
+      throw new Error(data.message || "Failed to query status");
+    } catch (e) {
+      console.error("Query status error:", e);
+      error.value = e.message;
+      return null;
+    }
+  }
+
+  function clearSelectedDevice() {
+    selectedDevice.value = null;
+  }
+
+  // ─── QR Code Management ─────────────────────
+  async function generateDeviceQr(deviceId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}/qr/generate`,
+        {
+          method: "POST",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        return data.data || data;
+      }
+      throw new Error(data.message || "QR код үүсгэхэд алдаа гарлаа");
+    } catch (e) {
+      console.error("Generate QR error:", e);
+      error.value = e.message;
+      return null;
+    }
+  }
+
+  async function generateAllQrs() {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/qr/generate-all`,
+        {
+          method: "POST",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        return data.data || data;
+      }
+      throw new Error(data.message || "Бүх QR код үүсгэхэд алдаа гарлаа");
+    } catch (e) {
+      console.error("Generate all QRs error:", e);
+      error.value = e.message;
+      return null;
+    }
+  }
+
+  async function getDeviceQrInfo(deviceId) {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/devices/${deviceId}/qr`,
+        {
+          method: "GET",
+          headers: {
+            ...authStore.getAuthHeader(),
+          },
+        },
+      );
+      const data = await response.json();
+      if (data.success) {
+        return data.data || data;
+      }
+      return null;
+    } catch (e) {
+      console.error("Get QR info error:", e);
+      return null;
+    }
+  }
+
+  // Compatibility aliases for existing code
+  const parkingSpots = computed(() => devices.value);
+  const selectedParking = computed(() => selectedDevice.value);
+  const totalSpots = totalDevices;
+  const inactiveSpots = offlineDevices;
+
+  return {
+    // State
+    devices,
     parkingSpots,
+    selectedDevice,
     selectedParking,
+    dashboardStats,
     isLoading,
     error,
+
+    // Computed
+    totalDevices,
     totalSpots,
-    freeSpots,
-    reservedSpots,
-    occupiedSpots,
+    onlineDevices,
+    offlineDevices,
     inactiveSpots,
-    activeSpots,
+    freeSpots,
+    occupiedSpots,
+    devicesWithCoordinates,
     statistics,
-    fetchParkingSpots,
-    fetchParkingById,
-    updateParkingStatus,
-    clearSelectedParking,
-    simulateRealTimeUpdates,
+
+    // Actions
+    fetchDevices,
+    fetchParkingSpots: fetchDevices,
+    fetchDashboardStats,
+    fetchDeviceById,
+    fetchParkingById: fetchDeviceById,
+    saveDeviceCoordinates,
+    raiseLock,
+    lowerLock,
+    queryDeviceStatus,
+    clearSelectedDevice,
+    clearSelectedParking: clearSelectedDevice,
+    generateDeviceQr,
+    generateAllQrs,
+    getDeviceQrInfo,
   };
 });

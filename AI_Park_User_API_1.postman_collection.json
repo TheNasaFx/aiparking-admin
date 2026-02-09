@@ -1,0 +1,300 @@
+{
+  "info": {
+    "name": "AI Park - User API",
+    "description": "User backend API for AI Park parking app with QR-based parking flow",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "1. Verify Phone (Send OTP)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tel\": \"99001122\",\n  \"name\": \"Тест Хэрэглэгч\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify-phone",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "verify-phone"]
+            }
+          }
+        },
+        {
+          "name": "2. Complete Registration",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tel\": \"99001122\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/complete-registration",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "complete-registration"]
+            }
+          }
+        },
+        {
+          "name": "3. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.token) {",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tel\": \"99001122\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "4. Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "QR Parking Flow",
+      "description": "New QR-based parking flow:\n1. Scan QR (lock lowers, reserved)\n2. Confirm Parked (lock raises, timer starts)\n3. Pay when leaving\n4. Request Exit (lock lowers)\n5. Confirm Exit (lock raises, completed)",
+      "item": [
+        {
+          "name": "1. Scan QR (Reserve)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.session_id) {",
+                  "    pm.collectionVariables.set('session_id', jsonData.data.session_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/qr/scan/2",
+              "host": ["{{base_url}}"],
+              "path": ["api", "qr", "scan", "2"]
+            },
+            "description": "QR уншуулах - Түгжээ буух, session 'reserved' болно"
+          }
+        },
+        {
+          "name": "2. Confirm Parked (Start Timer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/parking/{{session_id}}/confirm-parked",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "{{session_id}}", "confirm-parked"]
+            },
+            "description": "Машин байрлуулсан - Түгжээ өргөх, цаг эхлэх"
+          }
+        },
+        {
+          "name": "3. Get Active Session",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/parking/active",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "active"]
+            },
+            "description": "Идэвхтэй зогсоолын мэдээлэл авах"
+          }
+        },
+        {
+          "name": "4. Pay with Wallet",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/parking/{{session_id}}/wallet-pay",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "{{session_id}}", "wallet-pay"]
+            },
+            "description": "Хэтэвчээр төлбөр төлөх"
+          }
+        },
+        {
+          "name": "5. Request Exit",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/parking/{{session_id}}/request-exit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "{{session_id}}", "request-exit"]
+            },
+            "description": "Гарах хүсэлт - Түгжээ буух"
+          }
+        },
+        {
+          "name": "6. Confirm Exit (Complete)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/parking/{{session_id}}/confirm-exit",
+              "host": ["{{base_url}}"],
+              "path": ["api", "parking", "{{session_id}}", "confirm-exit"]
+            },
+            "description": "Гарлаа - Түгжээ өргөх, session дуусах"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet (QPay)",
+      "item": [
+        {
+          "name": "Charge Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"amount\": 5000\n}" },
+            "url": {
+              "raw": "{{base_url}}/api/charge",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charge"]
+            },
+            "description": "QPay invoice үүсгэх"
+          }
+        },
+        {
+          "name": "Check Charge Status",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoice_id\": \"your_invoice_id\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/charge/check",
+              "host": ["{{base_url}}"],
+              "path": ["api", "charge", "check"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Admin - QR Generation",
+      "item": [
+        {
+          "name": "Generate Device 2 QR",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/devices/2/qr/generate",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "devices", "2", "qr", "generate"]
+            },
+            "description": "Device 2-ийн QR код үүсгэх. Үр дүн: uploads/device_qr/device_2_qr.png"
+          }
+        },
+        {
+          "name": "Generate All Device QRs",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/devices/qr/generate-all",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "devices", "qr", "generate-all"]
+            },
+            "description": "Бүх төхөөрөмжийн QR код үүсгэх"
+          }
+        },
+        {
+          "name": "Get Device QR Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/admin/devices/2/qr",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "devices", "2", "qr"]
+            },
+            "description": "Device 2-ийн QR мэдээлэл авах"
+          }
+        }
+      ]
+    }
+  ]
+}

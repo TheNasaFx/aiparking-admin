@@ -5,6 +5,7 @@ import Overview from "./pages/parking/Overview.vue";
 import Control from "./pages/parking/Control.vue";
 import Revenue from "./pages/parking/Revenue.vue";
 import ParkingList from "./pages/parking/ParkingList.vue";
+import QrManagement from "./pages/parking/QrManagement.vue";
 import Login from "./pages/parking/Login.vue";
 
 // Settings page from original template
@@ -21,7 +22,14 @@ const routes = [
   // ==========================================
 
   // Main Dashboard - Ерөнхий мэдээлэл
-  { path: "/", component: Overview, meta: { requiresAuth: true } },
+  {
+    path: "/",
+    redirect: () => {
+      const token = localStorage.getItem("auth_token");
+      return token ? "/dashboard" : "/sign-in";
+    },
+  },
+  { path: "/dashboard", component: Overview, meta: { requiresAuth: true } },
 
   // Parking Control - Зогсоолын хяналт
   {
@@ -42,6 +50,13 @@ const routes = [
 
   // Revenue - Орлогын тайлан
   { path: "/revenue", component: Revenue, meta: { requiresAuth: true } },
+
+  // QR Management - QR код удирдлага
+  {
+    path: "/qr-management",
+    component: QrManagement,
+    meta: { requiresAuth: true },
+  },
 
   // Statistics (redirect to overview for now)
   { path: "/statistics", redirect: "/" },

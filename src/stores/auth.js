@@ -1,45 +1,49 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 
+export const API_BASE_URL = "https://aiparking.mindsymbol.com";
+
 export const useAuthStore = defineStore("auth", () => {
   const user = ref(null);
   const token = ref(localStorage.getItem("auth_token") || null);
 
-  // Mock credentials
-  const MOCK_CREDENTIALS = {
-    username: "admin",
-    password: "admin123",
-  };
-
   const isAuthenticated = computed(() => !!token.value);
 
-  function login(username, password) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (
-          username === MOCK_CREDENTIALS.username &&
-          password === MOCK_CREDENTIALS.password
-        ) {
-          const mockToken = "mock_jwt_token_" + Date.now();
-          const mockUser = {
-            id: 1,
-            username: "admin",
-            name: "Админ",
-            role: "Системийн админ",
-            avatar: null,
-          };
+  async function login(username, password) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ username, password }),
+      });
 
-          token.value = mockToken;
-          user.value = mockUser;
-          localStorage.setItem("auth_token", mockToken);
-          localStorage.setItem("auth_user", JSON.stringify(mockUser));
+      const data = await response.json();
 
-          resolve({ user: mockUser, token: mockToken });
-        } else {
-          reject(new Error("invalid_credentials"));
-        }
-      }, 500);
-    });
+      if (data.success && data.data?.token) {
+        const authToken = data.data.token;
+        const authUser = {
+          id: data.data.admin?.id || 1,
+          username: username,
+          name: "Админ",
+          role: "Системийн админ",
+          avatar: null,
+        };
+
+        token.value = authToken;
+        user.value = authUser;
+        localStorage.setItem("auth_token", authToken);
+        localStorage.setItem("auth_user", JSON.stringify(authUser));
+
+        return { user: authUser, token: authToken };
+      } else {
+        throw new Error(data.message || "invalid_credentials");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      throw new Error("invalid_credentials");
+    }
   }
 
   function logout() {
@@ -56,6 +60,10 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
+  function getAuthHeader() {
+    return token.value ? { Authorization: `Bearer ${token.value}` } : {};
+  }
+
   initAuth();
 
   return {
@@ -65,5 +73,6 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     logout,
     initAuth,
+    getAuthHeader,
   };
 });

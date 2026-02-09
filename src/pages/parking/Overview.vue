@@ -25,7 +25,7 @@
 
     <!-- Statistics Cards Row -->
     <div class="row gy-4">
-      <!-- Total Parking Spots -->
+      <!-- Total Devices -->
       <div class="col-xxl-3 col-sm-6">
         <div class="card p-3 shadow-2 radius-8 h-100 bg-gradient-start-1">
           <div class="card-body p-0">
@@ -36,11 +36,11 @@
                 <span
                   class="mb-0 w-48-px h-48-px bg-primary-600 flex-shrink-0 text-white d-flex justify-content-center align-items-center rounded-circle h6 mb-0"
                 >
-                  <iconify-icon icon="mdi:parking" class="icon" />
+                  <iconify-icon icon="mdi:devices" class="icon" />
                 </span>
                 <div>
                   <h6 class="fw-semibold mb-0 text-primary-light text-md">
-                    Нийт зогсоол
+                    Нийт төхөөрөмж
                   </h6>
                 </div>
               </div>
@@ -53,7 +53,7 @@
               </h5>
               <span
                 class="text-sm fw-medium px-16 py-6 bg-white rounded-pill text-primary-600"
-                >Идэвхтэй: {{ statistics.active }}</span
+                >Онлайн: {{ statistics.online }}</span
               >
             </div>
           </div>
@@ -130,7 +130,7 @@
         </div>
       </div>
 
-      <!-- Today Revenue -->
+      <!-- Offline -->
       <div class="col-xxl-3 col-sm-6">
         <div class="card p-3 shadow-2 radius-8 h-100 bg-gradient-start-4">
           <div class="card-body p-0">
@@ -139,13 +139,13 @@
             >
               <div class="d-flex align-items-center gap-2">
                 <span
-                  class="mb-0 w-48-px h-48-px bg-purple flex-shrink-0 text-white d-flex justify-content-center align-items-center rounded-circle h6 mb-0"
+                  class="mb-0 w-48-px h-48-px bg-danger flex-shrink-0 text-white d-flex justify-content-center align-items-center rounded-circle h6 mb-0"
                 >
-                  <iconify-icon icon="mdi:cash" class="icon" />
+                  <iconify-icon icon="mdi:wifi-off" class="icon" />
                 </span>
                 <div>
                   <h6 class="fw-semibold mb-0 text-primary-light text-md">
-                    Өнөөдрийн орлого
+                    Офлайн
                   </h6>
                 </div>
               </div>
@@ -154,16 +154,12 @@
               class="d-flex align-items-center justify-content-between flex-wrap gap-8"
             >
               <h5 class="fw-semibold text-primary-light mb-0">
-                {{ formatCurrency(todayRevenue) }}
+                {{ statistics.offline }}
               </h5>
               <span
-                class="text-sm fw-medium px-16 py-6 bg-white rounded-pill"
-                :class="
-                  revenueGrowth >= 0 ? 'text-success-600' : 'text-danger-600'
-                "
+                class="text-sm fw-medium px-16 py-6 bg-white rounded-pill text-danger-600"
+                >{{ offlinePercentage }}%</span
               >
-                {{ revenueGrowth >= 0 ? "+" : "" }}{{ revenueGrowth }}%
-              </span>
             </div>
           </div>
         </div>
@@ -172,36 +168,11 @@
 
     <!-- Charts Row -->
     <div class="row gy-4 mt-1">
-      <!-- Revenue Chart -->
-      <div class="col-xxl-8">
-        <div class="card h-100 radius-8 border-0">
-          <div class="card-body p-24">
-            <div
-              class="d-flex align-items-center flex-wrap gap-2 justify-content-between"
-            >
-              <div>
-                <h6 class="mb-2 fw-bold text-lg">Сүүлийн 7 хоногийн орлого</h6>
-                <span class="text-sm fw-medium text-secondary-light"
-                  >Өдөр тутмын орлогын график</span
-                >
-              </div>
-              <div class="text-end">
-                <h5 class="fw-semibold text-primary-600 mb-0">
-                  {{ formatCurrency(last7DaysTotal) }}
-                </h5>
-                <span class="text-sm text-secondary-light">Нийт</span>
-              </div>
-            </div>
-            <div ref="revenueChartRef" id="revenueChart" class="mt-28"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Parking Status Pie Chart -->
+      <!-- Device Status Pie Chart -->
       <div class="col-xxl-4">
         <div class="card h-100 radius-8 border-0">
           <div class="card-body p-24">
-            <h6 class="mb-2 fw-bold text-lg">Зогсоолын төлөв</h6>
+            <h6 class="mb-2 fw-bold text-lg">Төхөөрөмжийн төлөв</h6>
             <span class="text-sm fw-medium text-secondary-light"
               >Одоогийн төлөв байдал</span
             >
@@ -224,73 +195,111 @@
                 >
               </div>
               <div class="d-flex align-items-center gap-2">
-                <span class="w-12-px h-12-px rounded-circle bg-info-600"></span>
-                <span class="text-secondary-light text-sm fw-normal"
-                  >Захиалсан ({{ statistics.reserved }})</span
-                >
-              </div>
-              <div class="d-flex align-items-center gap-2">
                 <span
-                  class="w-12-px h-12-px rounded-circle bg-neutral-400"
+                  class="w-12-px h-12-px rounded-circle bg-danger-600"
                 ></span>
                 <span class="text-secondary-light text-sm fw-normal"
-                  >Идэвхгүй ({{ statistics.inactive }})</span
+                  >Офлайн ({{ statistics.offline }})</span
                 >
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Parking List and Activity Row -->
-    <div class="row gy-4 mt-1">
-      <!-- Parking Spots Table -->
+      <!-- Device List Table -->
       <div class="col-xxl-8">
         <div class="card h-100 radius-8 border-0">
           <div class="card-body p-24">
             <div
               class="d-flex align-items-center flex-wrap gap-2 justify-content-between mb-20"
             >
-              <h6 class="mb-0 fw-bold text-lg">Зогсоолын жагсаалт</h6>
-              <router-link
-                to="/parking-list"
-                class="btn btn-primary-600 radius-8 px-20 py-11"
-              >
-                Бүгдийг харах
-              </router-link>
+              <h6 class="mb-0 fw-bold text-lg">Төхөөрөмжүүдийн жагсаалт</h6>
+              <div class="d-flex gap-12">
+                <button
+                  @click="refreshDevices"
+                  class="btn btn-outline-primary-600 radius-8 px-16 py-8"
+                  :disabled="isLoading"
+                >
+                  <iconify-icon
+                    :icon="isLoading ? 'mdi:loading' : 'mdi:refresh'"
+                    :class="{ 'animate-spin': isLoading }"
+                    class="me-1"
+                  />
+                  Шинэчлэх
+                </button>
+                <router-link
+                  to="/parking-list"
+                  class="btn btn-primary-600 radius-8 px-20 py-11"
+                >
+                  Бүгдийг харах
+                </router-link>
+              </div>
             </div>
             <div class="table-responsive scroll-sm">
               <table class="table bordered-table sm-table mb-0">
                 <thead>
                   <tr>
-                    <th scope="col">ID</th>
-                    <th scope="col">Байршил</th>
+                    <th scope="col">Төхөөрөмжийн ID</th>
                     <th scope="col">Төлөв</th>
-                    <th scope="col">Сүүлд шинэчлэгдсэн</th>
+                    <th scope="col">Түгжээ</th>
+                    <th scope="col">Холболт</th>
+                    <th scope="col">Координат</th>
                     <th scope="col" class="text-center">Үйлдэл</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="parking in displayedParkings" :key="parking.id">
+                  <tr v-for="device in displayedDevices" :key="device.id">
                     <td>
                       <span class="fw-semibold text-primary-light">{{
-                        parking.id
+                        device.deviceId
                       }}</span>
                     </td>
-                    <td>{{ parking.location }}</td>
                     <td>
                       <span
                         class="px-12 py-6 radius-4 text-white text-sm fw-semibold"
-                        :class="getStatusClass(parking.status)"
+                        :class="getStatusClass(device.status)"
                       >
-                        {{ getStatusText(parking.status) }}
+                        {{ getStatusText(device.status) }}
                       </span>
                     </td>
-                    <td>{{ formatTime(parking.lastUpdated) }}</td>
+                    <td>
+                      <span class="text-primary-light">
+                        {{ device.lockState === "raised" ? "Дээш" : "Доош" }}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        :class="
+                          device.isOnline
+                            ? 'text-success-600'
+                            : 'text-danger-600'
+                        "
+                      >
+                        <iconify-icon
+                          :icon="device.isOnline ? 'mdi:wifi' : 'mdi:wifi-off'"
+                          class="me-1"
+                        />
+                        {{ device.isOnline ? "Онлайн" : "Офлайн" }}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        :class="
+                          device.hasCoordinates
+                            ? 'text-success-600'
+                            : 'text-warning-600'
+                        "
+                      >
+                        {{ device.hasCoordinates ? "Бүртгэлтэй" : "Бүртгэгүй" }}
+                      </span>
+                    </td>
                     <td class="text-center">
                       <router-link
-                        :to="`/parking/${parking.id}`"
+                        :to="{
+                          path: '/parking-control',
+                          query: { focus: device.deviceId },
+                        }"
                         class="w-32-px h-32-px bg-primary-light text-primary-600 rounded-circle d-inline-flex align-items-center justify-content-center"
                       >
                         <iconify-icon icon="iconamoon:eye-light" />
@@ -303,35 +312,81 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <!-- Recent Activity -->
-      <div class="col-xxl-4">
-        <div class="card h-100 radius-8 border-0">
+    <!-- Recent Activity Row -->
+    <div class="row gy-4 mt-1">
+      <div class="col-12">
+        <div class="card radius-8 border-0">
           <div class="card-body p-24">
-            <h6 class="mb-20 fw-bold text-lg">Сүүлийн үйл ажиллагаа</h6>
-            <div class="d-flex flex-column gap-16">
-              <div
-                v-for="(activity, index) in recentActivity"
-                :key="index"
-                class="d-flex align-items-start gap-16 pb-16"
-                :class="{ 'border-bottom': index < recentActivity.length - 1 }"
-              >
-                <div
-                  class="w-40-px h-40-px rounded-circle d-flex justify-content-center align-items-center flex-shrink-0"
-                  :class="activity.bgClass"
-                >
-                  <iconify-icon
-                    :icon="activity.icon"
-                    class="text-white text-xl"
-                  />
-                </div>
-                <div>
-                  <p class="text-sm fw-semibold text-primary-light mb-1">
-                    {{ activity.title }}
+            <h6 class="mb-20 fw-bold text-lg">Системийн мэдээлэл</h6>
+            <div class="row gy-4">
+              <div class="col-md-4">
+                <div class="p-16 bg-light radius-8">
+                  <div class="d-flex align-items-center gap-12 mb-12">
+                    <span
+                      class="w-40-px h-40-px bg-success-600 rounded-circle d-flex align-items-center justify-content-center"
+                    >
+                      <iconify-icon
+                        icon="mdi:server"
+                        class="text-white text-xl"
+                      />
+                    </span>
+                    <span class="fw-semibold text-primary-light"
+                      >API Холболт</span
+                    >
+                  </div>
+                  <p class="text-success-600 mb-0">
+                    <iconify-icon icon="mdi:check-circle" class="me-1" />
+                    Холбогдсон
                   </p>
-                  <span class="text-xs text-secondary-light">{{
-                    activity.time
+                  <span class="text-secondary-light text-sm">{{
+                    apiBaseUrl
                   }}</span>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-16 bg-light radius-8">
+                  <div class="d-flex align-items-center gap-12 mb-12">
+                    <span
+                      class="w-40-px h-40-px bg-primary-600 rounded-circle d-flex align-items-center justify-content-center"
+                    >
+                      <iconify-icon
+                        icon="mdi:map-marker"
+                        class="text-white text-xl"
+                      />
+                    </span>
+                    <span class="fw-semibold text-primary-light"
+                      >Газрын зурагт бүртгэлтэй</span
+                    >
+                  </div>
+                  <p class="text-primary-600 mb-0">
+                    {{ devicesWithCoordinates }} / {{ statistics.total }}
+                  </p>
+                  <span class="text-secondary-light text-sm"
+                    >төхөөрөмж бүртгэлтэй</span
+                  >
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="p-16 bg-light radius-8">
+                  <div class="d-flex align-items-center gap-12 mb-12">
+                    <span
+                      class="w-40-px h-40-px bg-info-600 rounded-circle d-flex align-items-center justify-content-center"
+                    >
+                      <iconify-icon
+                        icon="mdi:clock"
+                        class="text-white text-xl"
+                      />
+                    </span>
+                    <span class="fw-semibold text-primary-light"
+                      >Сүүлд шинэчлэгдсэн</span
+                    >
+                  </div>
+                  <p class="text-info-600 mb-0">{{ lastUpdated }}</p>
+                  <span class="text-secondary-light text-sm"
+                    >Өгөгдөл шинэчлэгдсэн</span
+                  >
                 </div>
               </div>
             </div>
@@ -345,20 +400,19 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import { useParkingStore, PARKING_STATUS } from "@/stores/parking";
-import { useRevenueStore } from "@/stores/revenue";
+import { API_BASE_URL } from "@/stores/auth";
 import ApexCharts from "apexcharts";
 
 const parkingStore = useParkingStore();
-const revenueStore = useRevenueStore();
 
-const revenueChartRef = ref(null);
 const statusChartRef = ref(null);
-let revenueChart = null;
 let statusChart = null;
+const lastUpdated = ref("Дөнгөж сая");
 
 const statistics = computed(() => parkingStore.statistics);
-const todayRevenue = computed(() => revenueStore.todayRevenue);
-const revenueGrowth = computed(() => revenueStore.revenueGrowth);
+const devices = computed(() => parkingStore.devices);
+const isLoading = computed(() => parkingStore.isLoading);
+const apiBaseUrl = API_BASE_URL;
 
 const freePercentage = computed(() => {
   if (statistics.value.total === 0) return 0;
@@ -370,76 +424,27 @@ const occupiedPercentage = computed(() => {
   return Math.round((statistics.value.occupied / statistics.value.total) * 100);
 });
 
-const displayedParkings = computed(() => {
-  return parkingStore.parkingSpots.slice(0, 5);
+const offlinePercentage = computed(() => {
+  if (statistics.value.total === 0) return 0;
+  return Math.round((statistics.value.offline / statistics.value.total) * 100);
 });
 
-const last7DaysTotal = computed(() => {
-  return revenueStore.last7DaysData.reduce((sum, item) => sum + item.income, 0);
+const displayedDevices = computed(() => {
+  return devices.value.slice(0, 5);
 });
 
-const recentActivity = ref([
-  {
-    title: "PKG-001 зогсоол ашиглагдаж эхэлсэн",
-    time: "2 минутын өмнө",
-    icon: "mdi:car",
-    bgClass: "bg-warning-main",
-  },
-  {
-    title: "PKG-003 зогсоол чөлөөлөгдсөн",
-    time: "15 минутын өмнө",
-    icon: "mdi:car-off",
-    bgClass: "bg-success-main",
-  },
-  {
-    title: "Төлбөр хийгдсэн - ₮5,000",
-    time: "32 минутын өмнө",
-    icon: "mdi:cash",
-    bgClass: "bg-info-main",
-  },
-  {
-    title: "PKG-005 захиалга хийгдсэн",
-    time: "1 цагийн өмнө",
-    icon: "mdi:calendar-clock",
-    bgClass: "bg-purple",
-  },
-  {
-    title: "Систем шинэчлэгдсэн",
-    time: "2 цагийн өмнө",
-    icon: "mdi:refresh",
-    bgClass: "bg-primary-600",
-  },
-]);
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat("mn-MN").format(value) + "₮";
-}
-
-function formatTime(dateString) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diff = now - date;
-  const minutes = Math.floor(diff / 60000);
-
-  if (minutes < 1) return "Дөнгөж сая";
-  if (minutes < 60) return `${minutes} минутын өмнө`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} цагийн өмнө`;
-
-  return date.toLocaleDateString("mn-MN");
-}
+const devicesWithCoordinates = computed(() => {
+  return devices.value.filter((d) => d.hasCoordinates).length;
+});
 
 function getStatusClass(status) {
   switch (status) {
     case PARKING_STATUS.FREE:
       return "bg-success-main";
-    case PARKING_STATUS.RESERVED:
-      return "bg-info-main";
     case PARKING_STATUS.OCCUPIED:
       return "bg-warning-main";
-    case PARKING_STATUS.INACTIVE:
-      return "bg-neutral-400";
+    case PARKING_STATUS.OFFLINE:
+      return "bg-danger-main";
     default:
       return "bg-neutral-400";
   }
@@ -449,88 +454,19 @@ function getStatusText(status) {
   switch (status) {
     case PARKING_STATUS.FREE:
       return "Сул";
-    case PARKING_STATUS.RESERVED:
-      return "Захиалсан";
     case PARKING_STATUS.OCCUPIED:
       return "Ашиглагдаж байгаа";
-    case PARKING_STATUS.INACTIVE:
-      return "Идэвхгүй";
+    case PARKING_STATUS.OFFLINE:
+      return "Офлайн";
     default:
       return status;
   }
 }
 
-function initRevenueChart() {
-  const chartData = revenueStore.last7DaysData;
-  const categories = chartData.map((item) => {
-    const date = new Date(item.date);
-    return date.toLocaleDateString("mn-MN", { weekday: "short" });
-  });
-  const values = chartData.map((item) => item.income);
-
-  const options = {
-    series: [
-      {
-        name: "Орлого",
-        data: values,
-      },
-    ],
-    chart: {
-      type: "area",
-      height: 300,
-      toolbar: { show: false },
-      fontFamily: "inherit",
-    },
-    colors: ["#487FFF"],
-    fill: {
-      type: "gradient",
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.1,
-        stops: [0, 90, 100],
-      },
-    },
-    dataLabels: { enabled: false },
-    stroke: {
-      curve: "smooth",
-      width: 3,
-    },
-    xaxis: {
-      categories: categories,
-      labels: {
-        style: { colors: "#6B7280" },
-      },
-    },
-    yaxis: {
-      labels: {
-        formatter: function (val) {
-          return val / 1000 + "к";
-        },
-        style: { colors: "#6B7280" },
-      },
-    },
-    tooltip: {
-      y: {
-        formatter: function (val) {
-          return new Intl.NumberFormat("mn-MN").format(val) + "₮";
-        },
-      },
-    },
-    grid: {
-      borderColor: "#E5E7EB",
-    },
-  };
-
-  if (revenueChart) {
-    revenueChart.destroy();
-  }
-
-  revenueChart = new ApexCharts(
-    document.querySelector("#revenueChart"),
-    options,
-  );
-  revenueChart.render();
+async function refreshDevices() {
+  await parkingStore.fetchDevices();
+  await parkingStore.fetchDashboardStats();
+  lastUpdated.value = new Date().toLocaleTimeString("mn-MN");
 }
 
 function initStatusChart() {
@@ -538,15 +474,14 @@ function initStatusChart() {
     series: [
       statistics.value.free,
       statistics.value.occupied,
-      statistics.value.reserved,
-      statistics.value.inactive,
+      statistics.value.offline,
     ],
     chart: {
       type: "donut",
       height: 260,
     },
-    labels: ["Сул", "Ашиглагдаж байгаа", "Захиалсан", "Идэвхгүй"],
-    colors: ["#22C55E", "#F59E0B", "#3B82F6", "#9CA3AF"],
+    labels: ["Сул", "Ашиглагдаж байгаа", "Офлайн"],
+    colors: ["#22C55E", "#F59E0B", "#EF4444"],
     legend: { show: false },
     dataLabels: {
       enabled: true,
@@ -597,19 +532,17 @@ function initStatusChart() {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    parkingStore.fetchParkingSpots(),
-    revenueStore.fetchRevenueData(),
-  ]);
+  await parkingStore.fetchDevices();
+  await parkingStore.fetchDashboardStats();
+  lastUpdated.value = new Date().toLocaleTimeString("mn-MN");
 
-  initRevenueChart();
-  initStatusChart();
-
-  // Start real-time updates
-  parkingStore.simulateRealTimeUpdates();
+  // Wait a bit for the DOM to be ready
+  setTimeout(() => {
+    initStatusChart();
+  }, 100);
 });
 
-// Update charts when data changes
+// Update chart when data changes
 watch(
   () => statistics.value,
   () => {
@@ -617,8 +550,7 @@ watch(
       statusChart.updateSeries([
         statistics.value.free,
         statistics.value.occupied,
-        statistics.value.reserved,
-        statistics.value.inactive,
+        statistics.value.offline,
       ]);
     }
   },
@@ -640,10 +572,23 @@ watch(
 }
 
 .bg-gradient-start-4 {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
-.bg-purple {
-  background-color: #8b5cf6;
+.bg-danger {
+  background-color: #ef4444;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
